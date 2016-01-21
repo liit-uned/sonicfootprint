@@ -1,5 +1,7 @@
 /*
   Didactic Example for pvCloud Library
+  
+  TEST FOR PULL REQUEST
    
   Provides a reference implementation for pvCloud Library on Intel Edison
 
@@ -46,27 +48,23 @@ void setup() {
   mySensor.setOversampleRate(7); // Set Oversample to the recommended 128
   mySensor.enableEventFlags(); // Enable all three pressure and temp event flags 
 
-}
+  Serial.println("Llamando System Call ...");
+  delay(3000);
+  String fakeCommand = "arecord ";
+  fakeCommand += "-d 20 -f dat /home/root/audio_record.wav";
+  system(fakeCommand.buffer);
 
-void loop() { 
-  if (cont<1)
-  {
-      Serial.println("Llamando System Call ...");
-      delay(3000);
-      String fakeCommand = "arecord ";
-      fakeCommand += "-d 20 -f dat /home/root/audio_record.wav";
-      system(fakeCommand.buffer);
-      cont++;  
-  }
   test_WriteAsync();
   //test_MonitorAsync();
   
   Serial.println("Fin de programa ...");
   delay(3000);
   
-  blinkSpecial(6);
-  
-  while(1);
+  blinkSpecial(6);  
+}
+
+void loop() { 
+
 }
 
 long minMillisBeforeNextRequest = 5000;
