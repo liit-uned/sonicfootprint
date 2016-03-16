@@ -20,52 +20,133 @@ Hardware Connections:
 //Required libraries
 #include <Wire.h>
 #include "pvcloud_lib.h"
-#include "MPL3115A2.h"
+#include "Adafruit_MPL3115A2.h"
 #include<stdlib.h>
 
 //Create instances of the objects
 PVCloud pvcloud;
-MPL3115A2 mySensor;
+Adafruit_MPL3115A2 mySensor;//SENSOR FOR PRESSURE/ALTITUDE/TEMPERATURE
 int cont = 0;
 
 void setup() {
-  pinMode(13, OUTPUT);
-
+  Serial.begin(9600);
+  logMessage("SETUP BEGIN!");
+  pinMode(13, OUTPUT);//BLINK
+  
   blinkSpecial(3);
-  
   delay(10000);
-  
   blinkSpecial(4);
   
-  Serial.begin(9600);
-  Serial.println("SETUP BEGIN!");
+  logMessage("SETUP - Configurando Programa...");
+
+  logMessage("Inicializando Sensor...");
   mySensor.begin(); // Get sensor online
   
-  //Configure the sensor
-  mySensor.setModeAltimeter(); // Measure altitude above sea level in meters
-  mySensor.setModeBarometer(); // Measure pressure in Pascals from 20 to 110 kPa
-   
-  mySensor.setOversampleRate(7); // Set Oversample to the recommended 128
-  mySensor.enableEventFlags(); // Enable all three pressure and temp event flags 
-
-  Serial.println("Llamando System Call ...");
-  delay(3000);
-  String fakeCommand = "arecord ";
-  fakeCommand += "-d 20 -f dat /home/root/audio_record.wav";
-  system(fakeCommand.buffer);
-
-  test_WriteAsync();
-  //test_MonitorAsync();
-  
-  Serial.println("Fin de programa ...");
-  delay(3000);
-  
-  blinkSpecial(6);  
+  Serial.println("SETUP Completo!");
+  blinkSpecial(3);  
 }
 
 void loop() { 
-
+  /**
+   * STEPS: 
+   * STEP 1 - Capture Sensor Data (TEMPERATURE, PRESSURE)
+   * STEP 2 - SEND Sensor Data to pvCloud
+   * STEP 3 - Record ()
+   * STEP 4 - Send Recorded file to pvCloud
+   * STEP 5 - GET INTERVAL SETTINGS FROM pvCloud
+   **/
+   logMessage("Leyendo temperatura...");
+   if(readTemperature() > -1){
+      logMessage("Leyendo presión...");
+      if(readPressure() > -1){
+          logMessage("Capturando sonido...");
+          if(sendDataToPVCloud(0,0)){
+              if(captureSound()){
+                  logMessage("Enviando sonido a pvCloud...");
+                  if(sendSoundTopvCloud()){
+                    
+                  } else {
+                    logMessage("No pude enviar el sonido a pvCloud");
+                  }
+              } else {
+                logMessage("No pude grabar sonido");
+              }
+          } else {
+               logMessage("No pude enviar los datos a pvCloud");
+          }
+          
+      } else {
+          logMessage("No pude leer la presión");
+      }
+   } else {
+      logMessage("No pude leer la temperatura");
+   }
 }
+
+float readTemperature(){
+  return -1;
+}
+
+float readPressure(){
+  return -1;
+}
+
+bool sendDataToPVCloud(float temperature, float pressure){
+  return false;
+}
+
+bool captureSound(){
+  return false;
+}
+
+bool sendSoundTopvCloud(){
+  return false;
+}
+
+long prevMillis = 0;
+void logMessage(String message){
+  long currentMillis = millis();
+  if(prevMillis = 0) prevMillis = millis();
+  
+  String completeMessage = "|";
+  completeMessage = completeMessage + currentMillis;
+  completeMessage = completeMessage + "| ";
+  completeMessage = completeMessage + message;
+  completeMessage = completeMessage + " Duration: ";
+  long duration = currentMillis - prevMillis;
+  
+  completeMessage += duration;
+
+  prevMillis = currentMillis;
+  Serial.println(completeMessage);
+}
+
+void blinkSpecial(int times)
+{
+    for(int i=0; i<times; i++){
+      digitalWrite(13,HIGH);
+      delay(300);
+      digitalWrite(13,LOW);
+      delay(300);  
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 long minMillisBeforeNextRequest = 5000;
 long requestCompleteMillis = 0;
@@ -94,13 +175,13 @@ void test_WriteAsync(){
     String dataTemperature = "";
   
     //Lectura de la presion atmosferica
-    float pressure = mySensor.readPressure();
+    float pressure = mySensor.getPressure();
     pressure = pressure/100;
 
     dataPressure += String(int(pressure))+ "."+ String(getDecimal(pressure));
 
     //Lectura de la temperatura
-    float temperature = mySensor.readTemp();
+    float temperature = mySensor.getTemperature();
     dataTemperature += String(int(temperature))+ "."+ String(getDecimal(temperature));
 
     //Envio el dato de la presion al pvCloud
@@ -188,12 +269,4 @@ long getDecimal(float val)
   else if(decPart=0)return(00);           //return 0 if decimal part of float number is not available
 }
 
-void blinkSpecial(int times)
-{
-    for(int i=0; i<times; i++){
-      digitalWrite(13,HIGH);
-      delay(300);
-      digitalWrite(13,LOW);
-      delay(300);  
-    }
-}
+
