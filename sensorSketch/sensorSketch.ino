@@ -34,13 +34,15 @@ void setup() {
   pinMode(13, OUTPUT);//BLINK
   
   blinkSpecial(3);
-  delay(10000);
+  delay(3000);
   blinkSpecial(4);
   
   logMessage("SETUP - Configurando Programa...");
 
   logMessage("Inicializando Sensor...");
-  mySensor.begin(); // Get sensor online
+  if(!mySensor.begin()){
+    logMessage("Sensor no esta presente...");
+  }
   
   Serial.println("SETUP Completo!");
   blinkSpecial(3);  
@@ -56,11 +58,20 @@ void loop() {
    * STEP 5 - GET INTERVAL SETTINGS FROM pvCloud
    **/
    logMessage("Leyendo temperatura...");
-   if(readTemperature() > -1){
-      logMessage("Leyendo presión...");
-      if(readPressure() > -1){
-          logMessage("Capturando sonido...");
-          if(sendDataToPVCloud(0,0)){
+   float temperature = readTemperature();
+   if(temperature > -1000){
+      String strTemp = convertFloatToString(temperature);
+      logMessage("Temperatura: " + strTemp);
+      logMessage("Leyendo presion...");
+
+
+      float pressure = readPressure();
+      if( pressure > -1000){
+        String strPress = convertFloatToString(pressure);
+          logMessage("Presion: " + strPress);
+          logMessage("Enviando datos a pvCloud...");
+          if(sendDataToPVCloud(strTemp, strPress)){
+              logMessage("Capturando sonido...");
               if(captureSound()){
                   logMessage("Enviando sonido a pvCloud...");
                   if(sendSoundTopvCloud()){
@@ -76,23 +87,35 @@ void loop() {
           }
           
       } else {
-          logMessage("No pude leer la presión");
+          logMessage("No pude leer la presion");
       }
    } else {
       logMessage("No pude leer la temperatura");
    }
+
+   delay(10000);
 }
 
 float readTemperature(){
-  return -1;
+   float tempC = mySensor.getTemperature();
+   return tempC;
 }
 
 float readPressure(){
-  return -1;
+  float pascals = mySensor.getPressure();
+  // Our weather page presents pressure in Inches (Hg)
+  // Use http://www.onlineconversion.com/pressure.htm for other units
+  float inchesHG = pascals/3377;
+  return inchesHG;
 }
 
-bool sendDataToPVCloud(float temperature, float pressure){
-  return false;
+bool sendDataToPVCloud(String temperature, String pressure){
+  // {"Temperature":"255.03","Pressure":"19200.00"}
+  String pvCloudValue = "{\"Temperature\":\""+temperature + "\",\"Pressure\":\"" + pressure + "\"}";
+  logMessage("pvCloud Value: " + pvCloudValue);
+  pvcloud.Write("TEMP_PRESS",pvCloudValue);
+  //TODO: 
+  return true;
 }
 
 bool captureSound(){
@@ -106,7 +129,7 @@ bool sendSoundTopvCloud(){
 long prevMillis = 0;
 void logMessage(String message){
   long currentMillis = millis();
-  if(prevMillis = 0) prevMillis = millis();
+  if(prevMillis == 0) prevMillis = millis();
   
   String completeMessage = "|";
   completeMessage = completeMessage + currentMillis;
@@ -129,6 +152,21 @@ void blinkSpecial(int times)
       digitalWrite(13,LOW);
       delay(300);  
     }
+}
+
+String convertFloatToString(float value){
+  return String(int(value)) + "." + String(getDecimal(value));
+}
+
+//function to extract decimal part of float
+long getDecimal(float val)
+{
+  int intPart = int(val);
+  long decPart = 100*(val-intPart); //I am multiplying by 100 assuming that the foat values will have a maximum of 3 decimal places
+                                   //Change to match the number of decimal places you need
+  if(decPart>0) return(decPart);           //return the decimal part of float number if it is available
+  else if(decPart<0)return((-1)*decPart); //if negative, multiply by -1
+  else if(decPart=0)return(00);           //return 0 if decimal part of float number is not available
 }
 
 
@@ -258,15 +296,6 @@ void serialOut (String message){
   Serial.println(completeMessage);
 }
 
-//function to extract decimal part of float
-long getDecimal(float val)
-{
-  int intPart = int(val);
-  long decPart = 100*(val-intPart); //I am multiplying by 100 assuming that the foat values will have a maximum of 3 decimal places
-                                   //Change to match the number of decimal places you need
-  if(decPart>0) return(decPart);           //return the decimal part of float number if it is available
-  else if(decPart<0)return((-1)*decPart); //if negative, multiply by -1
-  else if(decPart=0)return(00);           //return 0 if decimal part of float number is not available
-}
+
 
 
