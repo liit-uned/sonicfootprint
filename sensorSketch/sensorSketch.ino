@@ -105,8 +105,8 @@ float readPressure(){
   float pascals = mySensor.getPressure();
   // Our weather page presents pressure in Inches (Hg)
   // Use http://www.onlineconversion.com/pressure.htm for other units
-  float inchesHG = pascals/3377;
-  return inchesHG;
+  // float inchesHG = pascals/3377;
+  return pascals;
 }
 
 bool sendDataToPVCloud(String temperature, String pressure){
@@ -114,16 +114,20 @@ bool sendDataToPVCloud(String temperature, String pressure){
   String pvCloudValue = "{\"Temperature\":\""+temperature + "\",\"Pressure\":\"" + pressure + "\"}";
   logMessage("pvCloud Value: " + pvCloudValue);
   pvcloud.Write("TEMP_PRESS",pvCloudValue);
-  //TODO: 
   return true;
 }
 
 bool captureSound(){
-  return false;
+  String recordCommand = "arecord -f cd -c 1 -d 10 -r 44100 -D hw:2,0 soundfile.wav";
+  recordCommand = "ls > soundfile.wav";
+  system(recordCommand.buffer);    
+
+  return true;
 }
 
 bool sendSoundTopvCloud(){
-  return false;
+  pvcloud.SendFile("WAVFILE","soundfile.wav");
+  return true;
 }
 
 long prevMillis = 0;
